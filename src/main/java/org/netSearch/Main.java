@@ -25,10 +25,15 @@ public class Main {
 
         // Check Flags
         boolean loadStartUI = true;
+        boolean infiniteCrawl = false;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "-nogui":
                     loadStartUI = false;
+                    break;
+                case "-inf":
+                    infiniteCrawl = true;
+                    break;
             }
         }
 
@@ -56,7 +61,11 @@ public class Main {
                 nsStartUI.startui(mode, handlingDir, startSite);
             }
 
-            CrawlManager crawler = new CrawlManager(handlingDir, startSite);
+            CrawlManager crawler = new CrawlManager(
+                    handlingDir,
+                    startSite,
+                    infiniteCrawl
+            );
             crawler.start(startSite);
 
         } else if (Objects.equals(mode, "exitcodelist")) {

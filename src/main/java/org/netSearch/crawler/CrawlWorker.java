@@ -4,6 +4,8 @@ package org.netSearch.crawler;
 import org.netSearch.web.GetSite;
 import org.netSearch.web.GetAnchor;
 import org.netSearch.ui.StartUI;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import java.io.File;
 import java.net.URI;
@@ -153,7 +155,8 @@ public class CrawlWorker implements Runnable {
             );
         }
 
-        String filename = hashUrl(url) + ".html";
+        String pageHash = hashUrl(url);
+        String filename = pageHash + ".html";
         File output = new File(directory, filename);
 
         Files.writeString(
@@ -162,9 +165,25 @@ public class CrawlWorker implements Runnable {
                 StandardCharsets.UTF_8
         );
 
+        Document document = Jsoup.parse(html);
+        String metadata = "{\n" +
+                "  \"url\": \"" + jsonEscape(url) + "\",\n" +
+                "  \"title\": \"" + jsonEscape(document.title()) + "\"\n" +
+                "}\n";
+        File metadataOutput = new File(directory, pageHash + ".json");
+        Files.writeString(
+                metadataOutput.toPath(),
+                metadata,
+                StandardCharsets.UTF_8
+        );
+
         System.out.println(
                 "[WORKER " + workerId +
                         "] Saved: " + output.getAbsolutePath()
+        );
+        System.out.println(
+                "[WORKER " + workerId +
+                        "] Metadata saved: " + metadataOutput.getAbsolutePath()
         );
 
         // Parsing
@@ -239,5 +258,45 @@ public class CrawlWorker implements Runnable {
         }
 
         return result.toString();
+    }
+
+    private String jsonEscape(String value) {
+        StringBuilder escaped = new StringBuilder();
+
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+
+            switch (character) {
+                case '"':
+                    escaped.append("\\\"");
+                    break;
+                case '\\':
+                    escaped.append("\\\\");
+                    break;
+                case '\b':
+                    escaped.append("\\b");
+                    break;
+                case '\f':
+                    escaped.append("\\f");
+                    break;
+                case '\n':
+                    escaped.append("\\n");
+                    break;
+                case '\r':
+                    escaped.append("\\r");
+                    break;
+                case '\t':
+                    escaped.append("\\t");
+                    break;
+                default:
+                    if (character < 0x20) {
+                        escaped.append(String.format("\\u%04x", (int) character));
+                    } else {
+                        escaped.append(character);
+                    }
+            }
+        }
+
+        return escaped.toString();
     }
 }

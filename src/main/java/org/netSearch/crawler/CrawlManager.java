@@ -20,13 +20,19 @@ public class CrawlManager {
 
     private final String storageDir;
     private final String startingHost;
+    private final boolean infiniteCrawl;
 
     private int outstanding = 0;
     private boolean finished = false;
 
     public CrawlManager(String storageDir, String startingUrl) {
+        this(storageDir, startingUrl, false);
+    }
+
+    public CrawlManager(String storageDir, String startingUrl, boolean infiniteCrawl) {
         this.storageDir = storageDir;
         this.startingHost = URI.create(startingUrl).getHost();
+        this.infiniteCrawl = infiniteCrawl;
     }
 
     public void start(String startingUrl) {
@@ -37,7 +43,17 @@ public class CrawlManager {
         System.out.println("[INFO] Starting URL: " + startingUrl);
         System.out.println("[INFO] Threads: " + THREAD_COUNT);
         System.out.println("[INFO] Storage: " + storageDir);
+        System.out.println("[INFO] Infinite mode: " + infiniteCrawl);
         System.out.println();
+
+        if (infiniteCrawl) {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println();
+                System.out.println("[INFO] Stop requested. Finishing active pages...");
+                stopCrawl();
+                stopWorkers();
+            }, "netsearch-shutdown"));
+        }
 
         for (int i = 1; i <= THREAD_COUNT; i++) {
             executor.submit(new CrawlWorker(this, storageDir, i));
@@ -56,21 +72,7 @@ public class CrawlManager {
             }
         }
 
-        // Send stop signals after every page has been processed
-        for (int i = 0; i < THREAD_COUNT; i++) {
-            queue.offer(STOP);
-        }
-
-        executor.shutdown();
-
-        try {
-            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            executor.shutdownNow();
-        }
+        stopWorkers();
 
         System.out.println();
         System.out.println("==================================");
@@ -120,7 +122,7 @@ public class CrawlManager {
                 return;
             }
 
-            if (visited.size() > MAX_PAGES) {
+            if (!infiniteCrawl && visited.size() > MAX_PAGES) {
                 visited.remove(cleanUrl);
                 return;
             }
@@ -150,7 +152,7 @@ public class CrawlManager {
 
         System.out.println("[QUEUE] Outstanding pages: " + outstanding);
 
-        if (outstanding == 0 && !finished) {
+        if (outstanding == 0 && !finished && !infiniteCrawl) {
             finished = true;
 
             System.out.println("[INFO] All pages processed.");
@@ -160,5 +162,31 @@ public class CrawlManager {
 
     public synchronized int getVisitedCount() {
         return visited.size();
+    }
+
+    private synchronized void stopCrawl() {
+        if (!finished) {
+            finished = true;
+            notifyAll();
+        }
+
+        queue.clear();
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            queue.offer(STOP);
+        }
+    }
+
+    private void stopWorkers() {
+        stopCrawl();
+        executor.shutdown();
+
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
+        }
     }
 }
