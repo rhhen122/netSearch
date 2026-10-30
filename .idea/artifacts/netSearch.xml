@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="netSearch">
+    <output-path>$PROJECT_DIR$/out/artifacts/netSearch</output-path>
+    <root id="archive" name="netSearch.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="netSearch" />
+    </root>
+  </artifact>
+</component>
