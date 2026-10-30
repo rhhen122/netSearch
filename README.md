@@ -18,13 +18,13 @@ mvn package
 ## Run
 
 ```sh
-java -jar target/netSearch-1.0-SNAPSHOT.jar standard <output-directory> <starting-url> [flags]
+java -jar target/netSearch-1.0.jar standard <output-directory> <starting-url> [flags]
 ```
 
 For example:
 
 ```sh
-java -jar target/netSearch-1.0-SNAPSHOT.jar standard ./pages https://example.com -nogui
+java -jar target/netSearch-1.0.jar standard ./pages https://example.com -nogui
 ```
 
 ### Flags
@@ -38,7 +38,7 @@ java -jar target/netSearch-1.0-SNAPSHOT.jar standard ./pages https://example.com
 Flags can be used together:
 
 ```sh
-java -jar target/netSearch-1.0-SNAPSHOT.jar standard ./pages https://example.com -inf -nogui
+java -jar target/netSearch-1.0.jar standard ./pages https://example.com -inf -nogui
 ```
 
 ## Output
