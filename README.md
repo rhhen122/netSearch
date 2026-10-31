@@ -1,3 +1,5 @@
+<img src="https://github.com/rhhen122/netSearch/blob/master/.github/netSearch.png?raw=true" alt="netSearch logo" width="200"/>
+
 # netSearch
 
 > A lightweight Java web crawler that saves pages locally with searchable
