@@ -5,6 +5,8 @@
 [![forthebadge](https://forthebadge.com/images/badges/made-with-java.svg)](https://forthebadge.com)
 [![forthebadge](https://forthebadge.com/images/badges/docker-container.svg)](https://forthebadge.com)
 
+![Apache Maven Badge](https://img.shields.io/badge/Apache%20Maven-C71A36?logo=apachemaven&logoColor=fff&style=for-the-badge)
+
 > A lightweight Java web crawler that saves pages locally with searchable
 > metadata.
 
