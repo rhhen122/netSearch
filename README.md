@@ -2,6 +2,9 @@
 
 # netSearch
 
+[![forthebadge](https://forthebadge.com/images/badges/made-with-java.svg)](https://forthebadge.com)
+[![forthebadge](https://forthebadge.com/images/badges/docker-container.svg)](https://forthebadge.com)
+
 > A lightweight Java web crawler that saves pages locally with searchable
 > metadata.
 
