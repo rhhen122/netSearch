@@ -1,21 +1,31 @@
-# netSearch
+# 🔎 netSearch
 
-netSearch is a Java command-line web crawler. It downloads pages starting from a
-given URL, follows links it finds, and saves each page and its metadata to a
-local directory.
+> A lightweight Java web crawler that saves pages locally with searchable
+> metadata.
 
-## Requirements
+netSearch starts at a URL, follows links it discovers, and stores each page as
+HTML alongside a JSON file containing the page URL and title.
 
-- Java 21 or later
-- Maven
+---
 
-## Build
+## ✨ Features
+
+- Concurrent crawling with a default limit of **500 pages**
+- Optional custom page cap or unlimited crawling
+- HTML snapshots and matching JSON metadata files
+- Optional desktop monitor, or quiet command-line operation
+
+## 🚀 Get started
+
+**Requirements:** Java 21+ and Maven
+
+Build the executable JAR:
 
 ```sh
 mvn package
 ```
 
-## Run
+Start a crawl:
 
 ```sh
 java -jar target/netSearch-1.0.jar standard <output-directory> <starting-url> [flags]
@@ -27,24 +37,37 @@ For example:
 java -jar target/netSearch-1.0.jar standard ./pages https://example.com -nogui
 ```
 
-### Flags
+## ⚙️ Flags
 
-- `-nogui` runs the crawler without opening the monitor window.
-- `-inf` removes the default 500-page limit and keeps the crawler running until
-  you stop it with Ctrl+C. The crawler stays running even if it runs out of
-  undiscovered links. Pages already being downloaded are allowed up to 30
-  seconds to finish when stopping.
+| Flag | Description |
+| --- | --- |
+| `-cap=<number>` | Set the maximum pages to crawl. Must be a positive whole number; defaults to `500`. |
+| `-threads=<number>` | Set the number of crawler workers and monitor rows. Must be a positive whole number; defaults to `10`. |
+| `-inf` | Crawl without a page limit until stopped with **Ctrl+C**. Overrides `-cap`. |
+| `-nogui` | Run without opening the monitor window. |
 
-Flags can be used together:
+Combine flags as needed:
+
+```sh
+java -jar target/netSearch-1.0.jar standard ./pages https://example.com -cap=600 -threads=20 -nogui
+```
+
+Or run without a page limit:
 
 ```sh
 java -jar target/netSearch-1.0.jar standard ./pages https://example.com -inf -nogui
 ```
 
-## Output
+## 📁 Saved files
 
-Each downloaded page is saved as a SHA-256-named `.html` file. A matching
-`.json` file stores the page URL and HTML title, for example:
+Each downloaded page is saved in the output directory using a SHA-256 filename:
+
+```text
+<sha256>.html
+<sha256>.json
+```
+
+The JSON file contains the source URL and HTML page title:
 
 ```json
 {

@@ -20,21 +20,61 @@ public class Main {
         ExitCodeList nsExitLoadList = new ExitCodeList();
         StartUI nsStartUI = new StartUI();
 
-        // Run load checker so the system doesn't crash
-        nsLoadChecker.LoadChecker();
-
         // Check Flags
         boolean loadStartUI = true;
         boolean infiniteCrawl = false;
+        int maxPages = 500;
+        int threadCount = 10;
+        boolean loadChecker = true;
         for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
+            String argument = args[i];
+            switch (argument) {
+                case "-noloadcheck":
+                    loadChecker = false;
+                    break;
                 case "-nogui":
                     loadStartUI = false;
                     break;
                 case "-inf":
                     infiniteCrawl = true;
                     break;
+                default:
+                    if (argument.startsWith("-cap=")) {
+                        try {
+                            maxPages = Integer.parseInt(argument.substring(5));
+                            if (maxPages < 1) {
+                                throw new NumberFormatException();
+                            }
+                        } catch (NumberFormatException e) {
+                            nsError.error(
+                                    "Invalid page cap '" + argument.substring(5) +
+                                            "'. Provide a positive whole number.",
+                                    1
+                            );
+                            return;
+                        }
+                    }
+                    if (argument.startsWith("-threads=")) {
+                        try {
+                            threadCount = Integer.parseInt(argument.substring(9));
+                            if (threadCount < 1) {
+                                throw new NumberFormatException();
+                            }
+                        } catch (NumberFormatException e) {
+                            nsError.error(
+                                    "Invalid thread count '" + argument.substring(9) +
+                                            "'. Provide a positive whole number.",
+                                    1
+                            );
+                            return;
+                        }
+                    }
             }
+        }
+
+        // Runs a system load check to ensure the system is capable of running the program
+        if (loadChecker) {
+            nsLoadChecker.LoadChecker();
         }
 
         // Checks for args and if none displays HelpMenu
@@ -58,13 +98,15 @@ public class Main {
             nsGreet.greet("Starting UI");
 
             if (loadStartUI) {
-                nsStartUI.startui(mode, handlingDir, startSite);
+                nsStartUI.startui(mode, handlingDir, startSite, threadCount);
             }
 
             CrawlManager crawler = new CrawlManager(
                     handlingDir,
                     startSite,
-                    infiniteCrawl
+                    infiniteCrawl,
+                    maxPages,
+                    threadCount
             );
             crawler.start(startSite);
 

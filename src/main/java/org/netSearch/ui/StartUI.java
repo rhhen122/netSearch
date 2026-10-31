@@ -9,12 +9,16 @@ import java.nio.charset.StandardCharsets;
 
 public class StartUI {
 
-    private static final int THREAD_COUNT = 10;
+    private static final int DEFAULT_THREAD_COUNT = 10;
 
     private static JTextArea consoleOutput;
-    private static JLabel[] workerLabels = new JLabel[THREAD_COUNT];
+    private static volatile JLabel[] workerLabels = new JLabel[0];
 
     public void startui(String mode, String handlingDir, String startSite) {
+        startui(mode, handlingDir, startSite, DEFAULT_THREAD_COUNT);
+    }
+
+    public void startui(String mode, String handlingDir, String startSite, int threadCount) {
 
         SwingUtilities.invokeLater(() -> {
 
@@ -25,8 +29,8 @@ public class StartUI {
 
             // Parameter banner
             String paramText = String.format(
-                    " Mode: %s  |  Directory: %s  |  Target: %s",
-                    mode, handlingDir, startSite
+                    " Mode: %s  |  Directory: %s  |  Target: %s  |  Threads: %d",
+                    mode, handlingDir, startSite, threadCount
             );
 
             JTextField paramBox = new JTextField(paramText);
@@ -37,30 +41,33 @@ public class StartUI {
             paramBox.setFont(new Font("SansSerif", Font.BOLD, 12));
 
             // Worker monitor
-            JPanel workerPanel = new JPanel(new GridLayout(THREAD_COUNT, 1, 4, 4));
+            JPanel workerPanel = new JPanel(new GridLayout(threadCount, 1, 4, 4));
             workerPanel.setBorder(
                     BorderFactory.createTitledBorder("Thread Activity")
             );
 
-            for (int i = 0; i < THREAD_COUNT; i++) {
+            JLabel[] labels = new JLabel[threadCount];
+            for (int i = 0; i < threadCount; i++) {
 
-                workerLabels[i] = new JLabel(
+                labels[i] = new JLabel(
                         "Worker " + (i + 1) + " | Waiting to start..."
                 );
 
-                workerLabels[i].setFont(
+                labels[i].setFont(
                         new Font("Monospaced", Font.PLAIN, 12)
                 );
 
-                workerLabels[i].setBorder(
+                labels[i].setBorder(
                         BorderFactory.createEmptyBorder(5, 8, 5, 8)
                 );
 
-                workerLabels[i].setOpaque(true);
-                workerLabels[i].setBackground(new Color(235, 235, 235));
+                labels[i].setOpaque(true);
+                labels[i].setBackground(new Color(235, 235, 235));
 
-                workerPanel.add(workerLabels[i]);
+                workerPanel.add(labels[i]);
             }
+            workerLabels = labels;
+            JScrollPane workerScroll = new JScrollPane(workerPanel);
 
             // Console
             consoleOutput = new JTextArea();
@@ -77,7 +84,7 @@ public class StartUI {
             // Split worker monitor and console
             JSplitPane splitPane = new JSplitPane(
                     JSplitPane.VERTICAL_SPLIT,
-                    workerPanel,
+                    workerScroll,
                     consoleScroll
             );
 
@@ -97,7 +104,7 @@ public class StartUI {
     // Update an individual worker's status
     public static void updateWorkerStatus(int workerId, String status) {
 
-        if (workerId < 1 || workerId > THREAD_COUNT) {
+        if (workerId < 1 || workerId > workerLabels.length) {
             return;
         }
 

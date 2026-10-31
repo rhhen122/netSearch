@@ -8,31 +8,60 @@ import java.util.concurrent.*;
 
 public class CrawlManager {
 
-    private static final int THREAD_COUNT = 10;
-    private static final int MAX_PAGES = 500;
+    private static final int DEFAULT_THREAD_COUNT = 10;
+    private static final int DEFAULT_MAX_PAGES = 500;
     private static final String STOP = "__NETSEARCH_STOP__";
 
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<>();
     private final Set<String> visited = new HashSet<>();
 
-    private final ExecutorService executor =
-            Executors.newFixedThreadPool(THREAD_COUNT);
-
+    private final ExecutorService executor;
     private final String storageDir;
     private final String startingHost;
     private final boolean infiniteCrawl;
+    private final int maxPages;
+    private final int threadCount;
 
     private int outstanding = 0;
     private boolean finished = false;
 
     public CrawlManager(String storageDir, String startingUrl) {
-        this(storageDir, startingUrl, false);
+        this(storageDir, startingUrl, false, DEFAULT_MAX_PAGES, DEFAULT_THREAD_COUNT);
     }
 
     public CrawlManager(String storageDir, String startingUrl, boolean infiniteCrawl) {
+        this(storageDir, startingUrl, infiniteCrawl, DEFAULT_MAX_PAGES, DEFAULT_THREAD_COUNT);
+    }
+
+    public CrawlManager(
+            String storageDir,
+            String startingUrl,
+            boolean infiniteCrawl,
+            int maxPages
+    ) {
+        this(storageDir, startingUrl, infiniteCrawl, maxPages, DEFAULT_THREAD_COUNT);
+    }
+
+    public CrawlManager(
+            String storageDir,
+            String startingUrl,
+            boolean infiniteCrawl,
+            int maxPages,
+            int threadCount
+    ) {
+        if (maxPages < 1) {
+            throw new IllegalArgumentException("Page cap must be a positive number.");
+        }
+        if (threadCount < 1) {
+            throw new IllegalArgumentException("Thread count must be a positive number.");
+        }
+
         this.storageDir = storageDir;
         this.startingHost = URI.create(startingUrl).getHost();
         this.infiniteCrawl = infiniteCrawl;
+        this.maxPages = maxPages;
+        this.threadCount = threadCount;
+        this.executor = Executors.newFixedThreadPool(threadCount);
     }
 
     public void start(String startingUrl) {
@@ -41,8 +70,9 @@ public class CrawlManager {
         System.out.println("         NETSEARCH CRAWLER");
         System.out.println("==================================");
         System.out.println("[INFO] Starting URL: " + startingUrl);
-        System.out.println("[INFO] Threads: " + THREAD_COUNT);
+        System.out.println("[INFO] Threads: " + threadCount);
         System.out.println("[INFO] Storage: " + storageDir);
+        System.out.println("[INFO] Page cap: " + (infiniteCrawl ? "none" : maxPages));
         System.out.println("[INFO] Infinite mode: " + infiniteCrawl);
         System.out.println();
 
@@ -55,7 +85,7 @@ public class CrawlManager {
             }, "netsearch-shutdown"));
         }
 
-        for (int i = 1; i <= THREAD_COUNT; i++) {
+        for (int i = 1; i <= threadCount; i++) {
             executor.submit(new CrawlWorker(this, storageDir, i));
         }
 
@@ -122,7 +152,7 @@ public class CrawlManager {
                 return;
             }
 
-            if (!infiniteCrawl && visited.size() > MAX_PAGES) {
+            if (!infiniteCrawl && visited.size() > maxPages) {
                 visited.remove(cleanUrl);
                 return;
             }
@@ -171,7 +201,7 @@ public class CrawlManager {
         }
 
         queue.clear();
-        for (int i = 0; i < THREAD_COUNT; i++) {
+        for (int i = 0; i < threadCount; i++) {
             queue.offer(STOP);
         }
     }
