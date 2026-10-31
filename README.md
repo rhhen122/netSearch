@@ -40,6 +40,35 @@ For example:
 java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -nogui
 ```
 
+## 🐳 Docker
+
+Build the image from the repository root:
+
+```sh
+docker build -t netsearch .
+```
+
+Run a crawl with a named volume so downloaded pages and halt checkpoints
+persist between container runs:
+
+```sh
+docker volume create netsearch-data
+docker run --rm -v netsearch-data:/data netsearch \
+  standard /data/pages https://example.com -nogui -noloadcheck
+```
+
+To resume a halt-mode crawl, use the same volume and working directory:
+
+```sh
+docker run --rm -v netsearch-data:/data netsearch \
+  halt /data/pages https://example.com -nogui -noloadcheck
+docker run --rm -v netsearch-data:/data netsearch halt -resume
+```
+
+The container defaults to `help`. Arguments after the image name are passed
+directly to netSearch. The `/data` volume is owned by the unprivileged user
+inside the image; named volumes are recommended for writable persistent storage.
+
 ## ⚙️ Flags
 
 | Flag | Description |
@@ -48,6 +77,7 @@ java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -nogui
 | `-threads=<number>` | Set the number of crawler workers and monitor rows. Must be a positive whole number; defaults to `10`. |
 | `-inf` | Crawl without a page limit until stopped with **Ctrl+C**. Overrides `-cap`. |
 | `-nogui` | Run without opening the monitor window. |
+| `-noloadcheck` | Skip the system load check. |
 
 Use the `halt` mode instead of `standard` to stop after the configured page cap
 and save only the remaining crawl queue for a later run.
