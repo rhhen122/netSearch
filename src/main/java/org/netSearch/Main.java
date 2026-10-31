@@ -7,6 +7,8 @@ import org.netSearch.ui.*;
 import org.netSearch.crawler.*;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Objects;
 
 public class Main {
@@ -72,15 +74,64 @@ public class Main {
             }
         }
 
-        // Runs a system load check to ensure the system is capable of running the program
-        if (loadChecker) {
-            nsLoadChecker.LoadChecker();
-        }
-
         // Checks for args and if none displays HelpMenu
         if (args.length == 0 || Objects.equals(args[0], "help")) {
             System.out.println(nsHelpMenu.helpmenu());
             return;
+        }
+
+        if (Objects.equals(args[0], "halt") && args.length == 2 &&
+                Objects.equals(args[1], "-resume")) {
+            HaltStateStore stateStore = new HaltStateStore(Path.of("netSearch-halt.json"));
+            try {
+                HaltStateStore.State state = stateStore.load();
+                if (state.isLoadChecker()) {
+                    nsLoadChecker.LoadChecker();
+                }
+                if (state.isLoadStartUI()) {
+                    nsStartUI.startui(
+                            "halt",
+                            state.getStorageDir(),
+                            state.getStartingUrl(),
+                            state.getThreadCount()
+                    );
+                }
+
+                CrawlManager crawler = new CrawlManager(
+                        state.getStorageDir(),
+                        state.getStartingUrl(),
+                        state.getMaxPages(),
+                        state.getThreadCount(),
+                        state.getPendingUrls(),
+                        state.getVisitedUrls()
+                );
+                java.util.List<String> pendingUrls = crawler.start(state.getStartingUrl());
+                if (pendingUrls.isEmpty()) {
+                    stateStore.delete();
+                    System.out.println("[INFO] No queued sites remain; halt checkpoint removed.");
+                } else {
+                    stateStore.save(
+                            state.getStorageDir(),
+                            state.getStartingUrl(),
+                            state.getMaxPages(),
+                            state.getThreadCount(),
+                            state.isLoadStartUI(),
+                            state.isLoadChecker(),
+                            pendingUrls,
+                            crawler.getVisitedUrls()
+                    );
+                    System.out.println("[INFO] Saved " + pendingUrls.size() +
+                            " queued sites to " + Path.of("netSearch-halt.json").toAbsolutePath());
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                nsError.error("Could not resume halt crawl: " + e.getMessage(), 1);
+            }
+            return;
+        }
+
+        // Runs a system load check to ensure the system is capable of running the program.
+        if (loadChecker) {
+            nsLoadChecker.LoadChecker();
         }
 
         if (args.length < 3) {
@@ -109,6 +160,49 @@ public class Main {
                     threadCount
             );
             crawler.start(startSite);
+
+        } else if (Objects.equals(mode, "halt")) {
+            if (infiniteCrawl) {
+                nsError.error("Halt mode requires a finite page cap; remove -inf.", 1);
+                return;
+            }
+
+            nsGreet.greet("Starting halt crawl");
+            if (loadStartUI) {
+                nsStartUI.startui(mode, handlingDir, startSite, threadCount);
+            }
+
+            HaltStateStore stateStore = new HaltStateStore(Path.of("netSearch-halt.json"));
+            CrawlManager crawler = new CrawlManager(
+                    handlingDir,
+                    startSite,
+                    maxPages,
+                    threadCount,
+                    null,
+                    null
+            );
+            try {
+                java.util.List<String> pendingUrls = crawler.start(startSite);
+                if (pendingUrls.isEmpty()) {
+                    stateStore.delete();
+                    System.out.println("[INFO] No queued sites remain; no halt checkpoint needed.");
+                } else {
+                    stateStore.save(
+                            handlingDir,
+                            startSite,
+                            maxPages,
+                            threadCount,
+                            loadStartUI,
+                            loadChecker,
+                            pendingUrls,
+                            crawler.getVisitedUrls()
+                    );
+                    System.out.println("[INFO] Saved " + pendingUrls.size() +
+                            " queued sites to " + Path.of("netSearch-halt.json").toAbsolutePath());
+                }
+            } catch (IOException e) {
+                nsError.error("Could not save halt checkpoint: " + e.getMessage(), 1);
+            }
 
         } else if (Objects.equals(mode, "exitcodelist")) {
             System.out.println(nsExitLoadList.exitcodelist());

@@ -14,6 +14,7 @@ HTML alongside a JSON file containing the page URL and title.
 - Optional custom page cap or unlimited crawling
 - HTML snapshots and matching JSON metadata files
 - Optional desktop monitor, or quiet command-line operation
+- Halt mode that checkpoints the remaining crawl queue for later resumption
 
 ## 🚀 Get started
 
@@ -28,13 +29,13 @@ mvn package
 Start a crawl:
 
 ```sh
-java -jar target/netSearch-1.0.jar standard <output-directory> <starting-url> [flags]
+java -jar target/netSearch-1.1.0.jar standard <output-directory> <starting-url> [flags]
 ```
 
 For example:
 
 ```sh
-java -jar target/netSearch-1.0.jar standard ./pages https://example.com -nogui
+java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -nogui
 ```
 
 ## ⚙️ Flags
@@ -46,16 +47,31 @@ java -jar target/netSearch-1.0.jar standard ./pages https://example.com -nogui
 | `-inf` | Crawl without a page limit until stopped with **Ctrl+C**. Overrides `-cap`. |
 | `-nogui` | Run without opening the monitor window. |
 
+Use the `halt` mode instead of `standard` to stop after the configured page cap
+and save discovered sites for a later run.
+
 Combine flags as needed:
 
 ```sh
-java -jar target/netSearch-1.0.jar standard ./pages https://example.com -cap=600 -threads=20 -nogui
+java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -cap=600 -threads=20 -nogui
 ```
+
+Run in halt mode and continue the saved crawl in a later invocation:
+
+```sh
+java -jar target/netSearch-1.1.0.jar halt ./pages https://example.com -cap=500 -threads=10 -nogui
+java -jar target/netSearch-1.1.0.jar halt -resume
+```
+
+Halt mode saves its remaining URL queue, visited URLs, and crawl settings in
+`netSearch-halt.json` in the current working directory. Resume from that
+directory; the saved cap applies again to each resumed run. The checkpoint is
+removed when no queued sites remain.
 
 Or run without a page limit:
 
 ```sh
-java -jar target/netSearch-1.0.jar standard ./pages https://example.com -inf -nogui
+java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -inf -nogui
 ```
 
 ## 📁 Saved files

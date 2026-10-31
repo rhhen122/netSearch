@@ -2,7 +2,9 @@
 package org.netSearch.crawler;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
 
@@ -19,10 +21,15 @@ public class CrawlManager {
     private final String storageDir;
     private final String startingHost;
     private final boolean infiniteCrawl;
+    private final boolean haltMode;
     private final int maxPages;
     private final int threadCount;
+    private final int initialQueuedCount;
 
     private int outstanding = 0;
+    private int claimedCount = 0;
+    private int activeTasks = 0;
+    private int fetchingCount = 0;
     private boolean finished = false;
 
     public CrawlManager(String storageDir, String startingUrl) {
@@ -49,6 +56,30 @@ public class CrawlManager {
             int maxPages,
             int threadCount
     ) {
+        this(storageDir, startingUrl, infiniteCrawl, maxPages, threadCount, false, null, null);
+    }
+
+    public CrawlManager(
+            String storageDir,
+            String startingUrl,
+            int maxPages,
+            int threadCount,
+            List<String> pendingUrls,
+            Set<String> previouslySeenUrls
+    ) {
+        this(storageDir, startingUrl, false, maxPages, threadCount, true, pendingUrls, previouslySeenUrls);
+    }
+
+    private CrawlManager(
+            String storageDir,
+            String startingUrl,
+            boolean infiniteCrawl,
+            int maxPages,
+            int threadCount,
+            boolean haltMode,
+            List<String> pendingUrls,
+            Set<String> previouslySeenUrls
+    ) {
         if (maxPages < 1) {
             throw new IllegalArgumentException("Page cap must be a positive number.");
         }
@@ -59,12 +90,23 @@ public class CrawlManager {
         this.storageDir = storageDir;
         this.startingHost = URI.create(startingUrl).getHost();
         this.infiniteCrawl = infiniteCrawl;
+        this.haltMode = haltMode;
         this.maxPages = maxPages;
         this.threadCount = threadCount;
+        if (previouslySeenUrls != null) {
+            visited.addAll(previouslySeenUrls);
+        }
+        if (pendingUrls != null) {
+            for (String url : pendingUrls) {
+                queue.offer(url);
+                outstanding++;
+            }
+        }
+        this.initialQueuedCount = pendingUrls == null ? 0 : pendingUrls.size();
         this.executor = Executors.newFixedThreadPool(threadCount);
     }
 
-    public void start(String startingUrl) {
+    public List<String> start(String startingUrl) {
 
         System.out.println("==================================");
         System.out.println("         NETSEARCH CRAWLER");
@@ -74,6 +116,9 @@ public class CrawlManager {
         System.out.println("[INFO] Storage: " + storageDir);
         System.out.println("[INFO] Page cap: " + (infiniteCrawl ? "none" : maxPages));
         System.out.println("[INFO] Infinite mode: " + infiniteCrawl);
+        if (haltMode) {
+            System.out.println("[INFO] Halt mode: checkpointing after " + maxPages + " pages");
+        }
         System.out.println();
 
         if (infiniteCrawl) {
@@ -89,7 +134,9 @@ public class CrawlManager {
             executor.submit(new CrawlWorker(this, storageDir, i));
         }
 
-        enqueue(startingUrl);
+        if (initialQueuedCount == 0) {
+            enqueue(startingUrl);
+        }
 
         synchronized (this) {
             while (!finished) {
@@ -102,6 +149,7 @@ public class CrawlManager {
             }
         }
 
+        List<String> pendingUrls = haltMode ? new ArrayList<>(queue) : List.of();
         stopWorkers();
 
         System.out.println();
@@ -109,6 +157,7 @@ public class CrawlManager {
         System.out.println("[DONE] Crawl finished.");
         System.out.println("[DONE] Pages discovered: " + getVisitedCount());
         System.out.println("==================================");
+        return pendingUrls;
     }
 
     public synchronized void enqueue(String url) {
@@ -152,7 +201,7 @@ public class CrawlManager {
                 return;
             }
 
-            if (!infiniteCrawl && visited.size() > maxPages) {
+            if (!haltMode && !infiniteCrawl && visited.size() > maxPages) {
                 visited.remove(cleanUrl);
                 return;
             }
@@ -169,7 +218,38 @@ public class CrawlManager {
     }
 
     public String getNextUrl() throws InterruptedException {
-        return queue.take();
+        if (!haltMode) {
+            return queue.take();
+        }
+
+        while (true) {
+            synchronized (this) {
+                if (finished || claimedCount >= maxPages) {
+                    return STOP;
+                }
+                fetchingCount++;
+            }
+
+            String url = queue.poll(100, TimeUnit.MILLISECONDS);
+            synchronized (this) {
+                fetchingCount--;
+                if (url != null) {
+                    if (finished || claimedCount >= maxPages) {
+                        queue.offer(url);
+                        finishIfReady();
+                        return STOP;
+                    }
+                    claimedCount++;
+                    activeTasks++;
+                    return url;
+                }
+
+                finishIfReady();
+                if (finished || claimedCount >= maxPages) {
+                    return STOP;
+                }
+            }
+        }
     }
 
     public boolean isStopSignal(String url) {
@@ -179,6 +259,11 @@ public class CrawlManager {
     public synchronized void taskFinished() {
 
         outstanding--;
+        if (haltMode) {
+            activeTasks--;
+            finishIfReady();
+            return;
+        }
 
         System.out.println("[QUEUE] Outstanding pages: " + outstanding);
 
@@ -192,6 +277,20 @@ public class CrawlManager {
 
     public synchronized int getVisitedCount() {
         return visited.size();
+    }
+
+    public synchronized Set<String> getVisitedUrls() {
+        return new HashSet<>(visited);
+    }
+
+    private void finishIfReady() {
+        if (haltMode && !finished && fetchingCount == 0 &&
+                ((claimedCount >= maxPages && activeTasks == 0) ||
+                        (outstanding == 0 && activeTasks == 0))) {
+            finished = true;
+            System.out.println("[INFO] Halt run complete.");
+            notifyAll();
+        }
     }
 
     private synchronized void stopCrawl() {
