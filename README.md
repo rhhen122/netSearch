@@ -1,4 +1,4 @@
-# 🔎 netSearch
+# netSearch
 
 > A lightweight Java web crawler that saves pages locally with searchable
 > metadata.
