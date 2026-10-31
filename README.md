@@ -1,4 +1,4 @@
-<img src="https://github.com/rhhen122/netSearch/blob/master/.github/netSearch.png?raw=true" alt="netSearch logo" width="200"/>
+<img src="https://github.com/rhhen122/netSearch/blob/master/.github/netSearch.svg?raw=true" alt="netSearch logo" width="200"/>
 
 # netSearch
 
