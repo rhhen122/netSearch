@@ -48,7 +48,7 @@ java -jar target/netSearch-1.1.0.jar standard ./pages https://example.com -nogui
 | `-nogui` | Run without opening the monitor window. |
 
 Use the `halt` mode instead of `standard` to stop after the configured page cap
-and save discovered sites for a later run.
+and save only the remaining crawl queue for a later run.
 
 Combine flags as needed:
 
@@ -63,10 +63,14 @@ java -jar target/netSearch-1.1.0.jar halt ./pages https://example.com -cap=500 -
 java -jar target/netSearch-1.1.0.jar halt -resume
 ```
 
-Halt mode saves its remaining URL queue, visited URLs, and crawl settings in
-`netSearch-halt.json` in the current working directory. Resume from that
-directory; the saved cap applies again to each resumed run. The checkpoint is
-removed when no queued sites remain.
+Halt mode saves only its remaining URL queue and crawl settings (including the
+starting URL) in `netSearch-halt.json` in the current working directory. It does
+not save a list of URLs already parsed; saved page files are used to avoid
+re-crawling completed pages after resuming. Resume from that directory; the
+saved cap applies again to each resumed run. The checkpoint is removed when no
+queued sites remain. Once a capped run stops, other tools can read the saved
+page files while the pending queue remains in the checkpoint; `halt -resume`
+continues with that queue afterward.
 
 Or run without a page limit:
 

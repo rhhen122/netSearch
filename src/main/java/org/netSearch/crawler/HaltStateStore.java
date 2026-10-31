@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
-import java.util.Set;
 
 public class HaltStateStore {
 
@@ -44,8 +43,7 @@ public class HaltStateStore {
             int threadCount,
             boolean loadStartUI,
             boolean loadChecker,
-            List<String> pendingUrls,
-            Set<String> visitedUrls
+            List<String> pendingUrls
     ) throws IOException {
         State state = new State(
                 STATE_VERSION,
@@ -55,8 +53,7 @@ public class HaltStateStore {
                 threadCount,
                 loadStartUI,
                 loadChecker,
-                pendingUrls,
-                visitedUrls
+                pendingUrls
         );
         validate(state);
 
@@ -91,11 +88,11 @@ public class HaltStateStore {
         if (state.maxPages < 1 || state.threadCount < 1) {
             throw new IllegalArgumentException("Checkpoint has invalid page or thread limits.");
         }
-        if (state.pendingUrls == null || state.pendingUrls.isEmpty() || state.visitedUrls == null) {
+        if (state.pendingUrls == null || state.pendingUrls.isEmpty()) {
             throw new IllegalArgumentException("Checkpoint is missing its URL queue.");
         }
         for (String url : state.pendingUrls) {
-            if (url == null || url.isBlank() || !state.visitedUrls.contains(url)) {
+            if (url == null || url.isBlank()) {
                 throw new IllegalArgumentException("Checkpoint contains an invalid queued URL.");
             }
         }
@@ -110,7 +107,6 @@ public class HaltStateStore {
         private boolean loadStartUI;
         private boolean loadChecker;
         private List<String> pendingUrls;
-        private Set<String> visitedUrls;
 
         private State() {
         }
@@ -123,8 +119,7 @@ public class HaltStateStore {
                 int threadCount,
                 boolean loadStartUI,
                 boolean loadChecker,
-                List<String> pendingUrls,
-                Set<String> visitedUrls
+                List<String> pendingUrls
         ) {
             this.version = version;
             this.storageDir = storageDir;
@@ -134,7 +129,6 @@ public class HaltStateStore {
             this.loadStartUI = loadStartUI;
             this.loadChecker = loadChecker;
             this.pendingUrls = pendingUrls;
-            this.visitedUrls = visitedUrls;
         }
 
         public String getStorageDir() {
@@ -163,10 +157,6 @@ public class HaltStateStore {
 
         public List<String> getPendingUrls() {
             return pendingUrls;
-        }
-
-        public Set<String> getVisitedUrls() {
-            return visitedUrls;
         }
     }
 }

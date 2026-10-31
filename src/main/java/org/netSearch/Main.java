@@ -102,8 +102,7 @@ public class Main {
                         state.getStartingUrl(),
                         state.getMaxPages(),
                         state.getThreadCount(),
-                        state.getPendingUrls(),
-                        state.getVisitedUrls()
+                        state.getPendingUrls()
                 );
                 java.util.List<String> pendingUrls = crawler.start(state.getStartingUrl());
                 if (pendingUrls.isEmpty()) {
@@ -117,8 +116,7 @@ public class Main {
                             state.getThreadCount(),
                             state.isLoadStartUI(),
                             state.isLoadChecker(),
-                            pendingUrls,
-                            crawler.getVisitedUrls()
+                            pendingUrls
                     );
                     System.out.println("[INFO] Saved " + pendingUrls.size() +
                             " queued sites to " + Path.of("netSearch-halt.json").toAbsolutePath());
@@ -178,7 +176,6 @@ public class Main {
                     startSite,
                     maxPages,
                     threadCount,
-                    null,
                     null
             );
             try {
@@ -194,8 +191,7 @@ public class Main {
                             threadCount,
                             loadStartUI,
                             loadChecker,
-                            pendingUrls,
-                            crawler.getVisitedUrls()
+                            pendingUrls
                     );
                     System.out.println("[INFO] Saved " + pendingUrls.size() +
                             " queued sites to " + Path.of("netSearch-halt.json").toAbsolutePath());

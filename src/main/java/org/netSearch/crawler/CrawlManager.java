@@ -2,6 +2,8 @@
 package org.netSearch.crawler;
 
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +24,7 @@ public class CrawlManager {
     private final String startingHost;
     private final boolean infiniteCrawl;
     private final boolean haltMode;
+    private final boolean resumeMode;
     private final int maxPages;
     private final int threadCount;
     private final int initialQueuedCount;
@@ -56,7 +59,7 @@ public class CrawlManager {
             int maxPages,
             int threadCount
     ) {
-        this(storageDir, startingUrl, infiniteCrawl, maxPages, threadCount, false, null, null);
+        this(storageDir, startingUrl, infiniteCrawl, maxPages, threadCount, false, null);
     }
 
     public CrawlManager(
@@ -64,10 +67,9 @@ public class CrawlManager {
             String startingUrl,
             int maxPages,
             int threadCount,
-            List<String> pendingUrls,
-            Set<String> previouslySeenUrls
+            List<String> pendingUrls
     ) {
-        this(storageDir, startingUrl, false, maxPages, threadCount, true, pendingUrls, previouslySeenUrls);
+        this(storageDir, startingUrl, false, maxPages, threadCount, true, pendingUrls);
     }
 
     private CrawlManager(
@@ -77,8 +79,7 @@ public class CrawlManager {
             int maxPages,
             int threadCount,
             boolean haltMode,
-            List<String> pendingUrls,
-            Set<String> previouslySeenUrls
+            List<String> pendingUrls
     ) {
         if (maxPages < 1) {
             throw new IllegalArgumentException("Page cap must be a positive number.");
@@ -91,13 +92,12 @@ public class CrawlManager {
         this.startingHost = URI.create(startingUrl).getHost();
         this.infiniteCrawl = infiniteCrawl;
         this.haltMode = haltMode;
+        this.resumeMode = haltMode && pendingUrls != null;
         this.maxPages = maxPages;
         this.threadCount = threadCount;
-        if (previouslySeenUrls != null) {
-            visited.addAll(previouslySeenUrls);
-        }
         if (pendingUrls != null) {
             for (String url : pendingUrls) {
+                visited.add(url);
                 queue.offer(url);
                 outstanding++;
             }
@@ -155,7 +155,11 @@ public class CrawlManager {
         System.out.println();
         System.out.println("==================================");
         System.out.println("[DONE] Crawl finished.");
-        System.out.println("[DONE] Pages discovered: " + getVisitedCount());
+        if (haltMode) {
+            System.out.println("[DONE] Pages processed this run: " + getProcessedPageCount());
+        } else {
+            System.out.println("[DONE] Pages discovered: " + getVisitedCount());
+        }
         System.out.println("==================================");
         return pendingUrls;
     }
@@ -197,6 +201,10 @@ public class CrawlManager {
 
             String cleanUrl = uri.toString();
 
+            if (resumeMode && hasSavedPage(cleanUrl)) {
+                return;
+            }
+
             if (!visited.add(cleanUrl)) {
                 return;
             }
@@ -215,6 +223,11 @@ public class CrawlManager {
         } catch (Exception e) {
             System.out.println("[INVALID URL] " + url);
         }
+    }
+
+    private boolean hasSavedPage(String url) throws Exception {
+        Path pageFile = Path.of(storageDir, PageFiles.hashUrl(url) + ".html");
+        return Files.isRegularFile(pageFile);
     }
 
     public String getNextUrl() throws InterruptedException {
@@ -279,8 +292,8 @@ public class CrawlManager {
         return visited.size();
     }
 
-    public synchronized Set<String> getVisitedUrls() {
-        return new HashSet<>(visited);
+    private synchronized int getProcessedPageCount() {
+        return claimedCount;
     }
 
     private void finishIfReady() {

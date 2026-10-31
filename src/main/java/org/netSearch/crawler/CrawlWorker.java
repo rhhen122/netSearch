@@ -11,7 +11,6 @@ import java.io.File;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.security.MessageDigest;
 
 public class CrawlWorker implements Runnable {
 
@@ -155,7 +154,7 @@ public class CrawlWorker implements Runnable {
             );
         }
 
-        String pageHash = hashUrl(url);
+        String pageHash = PageFiles.hashUrl(url);
         String filename = pageHash + ".html";
         File output = new File(directory, filename);
 
@@ -240,24 +239,6 @@ public class CrawlWorker implements Runnable {
                 "[WORKER " + workerId +
                         "] Page processing complete."
         );
-    }
-
-    // Generate SHA-256 filename from URL
-    private String hashUrl(String url) throws Exception {
-
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-        byte[] hash = digest.digest(
-                url.getBytes(StandardCharsets.UTF_8)
-        );
-
-        StringBuilder result = new StringBuilder();
-
-        for (byte b : hash) {
-            result.append(String.format("%02x", b));
-        }
-
-        return result.toString();
     }
 
     private String jsonEscape(String value) {
